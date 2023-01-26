@@ -63,6 +63,7 @@ func NewSerialIO(deej *Deej, logger *zap.SugaredLogger) (*SerialIO, error) {
 		stopChannel:         make(chan bool),
 		connected:           false,
 		conn:                nil,
+		b:                   nil,
 		sliderMoveConsumers: []chan SliderMoveEvent{},
 		buttonEventConsumers: []chan ButtonEvent{},
 	}
@@ -113,6 +114,24 @@ func (sio *SerialIO) Start() error {
 		sio.logger.Warnw("Failed to open serial connection", "error", err)
 		return fmt.Errorf("open serial connection: %w", err)
 	}
+
+	err := port.Write('o')
+	if err != nil {
+
+		// might need a user notification here, TBD
+		sio.logger.Warnw("Failed to open serial connection", "error", err)
+		return fmt.Errorf("open serial connection: %w", err)
+	}
+
+	b, err = readWithTimeout(circuit, 1)
+	if err != nil {
+
+		// might need a user notification here, TBD
+		sio.logger.Warnw("Failed to open serial connection", "error", err)
+		return fmt.Errorf("open serial connection: %w", err)
+	}
+
+	namedLogger.Infow("Reseved", "conn", b)
 
 	namedLogger := sio.logger.Named(strings.ToLower(sio.connOptions.PortName))
 
