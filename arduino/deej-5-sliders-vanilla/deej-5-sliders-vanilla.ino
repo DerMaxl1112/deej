@@ -1,44 +1,91 @@
-const int NUM_SLIDERS = 5;
-const int analogInputs[NUM_SLIDERS] = {A3, A2, A1, A0, A10};
-const int NUM_BUTTONS = 6;
-const int buttonInputs[NUM_BUTTONS] = {9,8,7,6,5,4};
+// Slider variables
+const int NUM_SLIDERS = 6;
+
+const int analogInputs[NUM_SLIDERS] = {A0, A1, A2, A3, A6, A7};
 
 int analogSliderValues[NUM_SLIDERS];
-int buttonValues[NUM_BUTTONS];
+
+// Switch variables
+const int NUM_SWITCHES = 12;            // Number of Switches
+
+const int column_pin[4] = {2, 3, 4, 5};       // readout pins           |
+const int row_pin[3] = {12, 11, 10};          // digital power pins     -
+
+bool SwitchValues_2d[4][3] = {false};   // Switch state in 2d layout
+bool SwitchValues_1d[12] = {false};     // Switch state in 1d layout
+
+//--------------------------------------------------------------------------------------------------
 
 void setup() {
+  // set pins to in and output
+  // Sliders
   for (int i = 0; i < NUM_SLIDERS; i++) {
     pinMode(analogInputs[i], INPUT);
   }
 
-  for (int i = 0; i < NUM_BUTTONS; i++) {
-    pinMode(buttonInputs[i], INPUT_PULLUP);
-  }
+  // Switches
+  for(int i=0; i<4; i++)
+    pinMode(column_pin[i], INPUT);
 
-  Serial.begin(9600);
+  for(int i=0; i<3; i++)
+    pinMode(row_pin[i], OUTPUT);
+
+    Serial.begin(9600);
 }
+
+//--------------------------------------------------------------------------------------------------
 
 void loop() {
+  //Update everything
+  updateSwitchValues();
   updateSliderValues();
-  sendSliderValues(); // Actually send data (all the time)
-//   printSliderValues(); // For debug
+  formatSwitchValues(); 
+
+  sendValues(); // Actually send data (all the time)
   delay(10);
 }
+
+//--------------------------------------------------------------------------------------------------
+
+void updateSwitchValues() {
+  for(int i = 0; i<3; i++) {
+    digitalWrite(row_pin[i], HIGH);
+    delay(1);
+
+    for(int j = 0; j<4; j++) {
+      SwitchValues_2d[j][i] = digitalRead(column_pin[j]);
+    }
+    digitalWrite(row_pin[i], LOW);
+  }
+}
+
+//--------------------------------------------------------------------------------------------------
 
 void updateSliderValues() {
   for (int i = 0; i < NUM_SLIDERS; i++) {
     analogSliderValues[i] = analogRead(analogInputs[i]);
   }
-  for (int i = 0; i < NUM_BUTTONS; i++) {
-    buttonValues[i] = digitalRead(buttonInputs[i]);
+}
+
+//--------------------------------------------------------------------------------------------------
+
+void formatSwitchValues() {
+  int count = 0;
+  for(int i = 0; i < 3; i++) {
+    for(int j = 0; j < 4; j++) {
+      SwitchValues_1d[count] = SwitchValues_2d[j][i];
+      count++;
+    }
   }
 }
 
-void sendSliderValues() {
+//--------------------------------------------------------------------------------------------------
+
+void sendValues() {
   String builtString = String("");
 
   for (int i = 0; i < NUM_SLIDERS; i++) {
-    builtString += "s";
+    builtString += "s";                               // s -> Slider
     builtString += String((int)analogSliderValues[i]);
 
     if (i < NUM_SLIDERS - 1) {
@@ -46,31 +93,18 @@ void sendSliderValues() {
     }
   }
 
-  if(NUM_BUTTONS > 0){
+  if(NUM_SWITCHES > 0){
     builtString += String("|");
   }
 
-  for (int i = 0; i < NUM_BUTTONS; i++) {
-    builtString += "b";
-    builtString += String((int)buttonValues[i]);
+  for (int i = 0; i < NUM_SWITCHES; i++) {
+    builtString += "b";                               // b -> Button
+    builtString += String((int)SwitchValues_1d[i]);
 
-    if (i < NUM_BUTTONS - 1) {
+    if (i < NUM_SWITCHES - 1) {
       builtString += String("|");
     }
   }
 
   Serial.println(builtString);
-}
-
-void printSliderValues() {
-  for (int i = 0; i < NUM_SLIDERS; i++) {
-    String printedString = String("Slider #") + String(i + 1) + String(": ") + String(analogSliderValues[i]) + String(" mV");
-    Serial.write(printedString.c_str());
-
-    if (i < NUM_SLIDERS - 1) {
-      Serial.write(" | ");
-    } else {
-      Serial.write("\n");
-    }
-  }
 }
